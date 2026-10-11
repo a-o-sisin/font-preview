@@ -6,9 +6,9 @@
 <title>ローカルフォント・プレビューア</title>
 <style>
     :root {
-        --bg-color: #f5f5f7;       /* 画面全体（外側）の背景色 */
-        --preview-bg: #ffffff;     /* フォント枠の背景色 */
-        --preview-text: #333333;   /* フォントの文字色 */
+        --bg-color: #f5f5f7;       
+        --preview-bg: #ffffff;     
+        --preview-text: #333333;   
         --border-color: #e0e0e0;
     }
     body {
@@ -26,7 +26,7 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         display: flex;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 15px;
         align-items: center;
         z-index: 100;
         margin-bottom: 20px;
@@ -56,27 +56,30 @@
     .control-group {
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 14px;
+        gap: 8px;
+        font-size: 13px;
+        background: #f8f9fa;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: 1px solid #eee;
     }
 
-    /* カラー設定周りのデザイン */
     .color-inputs {
         display: flex;
         align-items: center;
         gap: 5px;
     }
     .color-inputs input[type="text"] {
-        width: 75px;
-        padding: 5px;
-        font-size: 14px;
+        width: 70px;
+        padding: 4px;
+        font-size: 13px;
         border: 1px solid var(--border-color);
         border-radius: 4px;
         text-transform: uppercase;
     }
     .color-inputs input[type="color"] {
-        width: 30px;
-        height: 30px;
+        width: 24px;
+        height: 24px;
         padding: 0;
         border: none;
         border-radius: 4px;
@@ -84,11 +87,19 @@
         background: none;
     }
     
+    #searchBox {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        width: 200px;
+    }
+
     #statusMessage {
         width: 100%;
         font-size: 13px;
         color: #666;
-        margin-top: -10px;
+        margin-top: -5px;
     }
 
     .font-grid {
@@ -97,7 +108,6 @@
         gap: 20px;
     }
     
-    /* プレビュー枠（ここの色が動的に変わります） */
     .font-card {
         background-color: var(--preview-bg);
         color: var(--preview-text);
@@ -108,11 +118,19 @@
         transition: background-color 0.2s, color 0.2s;
     }
     .font-name {
-        font-size: 11px;
-        opacity: 0.5;
+        opacity: 0.6;
         margin-bottom: 10px;
         border-bottom: 1px solid currentcolor;
-        padding-bottom: 5px;
+        padding-bottom: 8px;
+        line-height: 1.3;
+    }
+    .font-name strong {
+        font-size: 14px;
+    }
+    .font-name span {
+        font-size: 11px;
+        display: block;
+        margin-top: 3px;
     }
     .font-preview {
         word-break: break-word;
@@ -129,28 +147,33 @@
     <div class="control-group">
         <label for="fontSize">サイズ:</label>
         <input type="range" id="fontSize" min="12" max="100" value="28">
-        <span id="fontSizeDisplay" style="min-width: 40px;">28px</span>
+        <span id="fontSizeDisplay" style="min-width: 35px;">28px</span>
     </div>
 
-    <!-- 背景色と文字色をカラーコードで変更できるオプション -->
     <div class="control-group">
         <label>背景色:</label>
         <div class="color-inputs">
             <input type="color" id="bgColorPicker" value="#ffffff">
-            <input type="text" id="bgColorHex" value="#ffffff" maxlength="7" placeholder="#FFFFFF">
+            <input type="text" id="bgColorHex" value="#ffffff" maxlength="7">
         </div>
-    </div>
-    
-    <div class="control-group">
-        <label>文字色:</label>
+        <label style="margin-left: 10px;">文字色:</label>
         <div class="color-inputs">
             <input type="color" id="textColorPicker" value="#333333">
-            <input type="text" id="textColorHex" value="#333333" maxlength="7" placeholder="#333333">
+            <input type="text" id="textColorHex" value="#333333" maxlength="7">
         </div>
     </div>
     
+    <!-- 絞り込みオプション -->
+    <div class="control-group" style="background: #e3f2fd; border-color: #bbdefb;">
+        <label style="cursor: pointer; font-weight: bold; color: #0277bd;">
+            <input type="checkbox" id="hideAlphabet" checked> 日本語フォントのみ（自動判定）
+        </label>
+    </div>
+    
+    <input type="text" id="searchBox" placeholder="🔍 フォント名で検索...">
+    
     <button id="loadFontsBtn">PC内のフォントを読み込む</button>
-    <div id="statusMessage">※セキュリティのため、読み込みにはボタンクリックによる許可が必要です（Chrome / Edge対応）。</div>
+    <div id="statusMessage">※読み込みにはボタンクリックによる許可が必要です（Chrome / Edge対応）。</div>
 </div>
 
 <div class="font-grid" id="fontGrid"></div>
@@ -167,46 +190,35 @@
     const bgColorHex = document.getElementById('bgColorHex');
     const textColorPicker = document.getElementById('textColorPicker');
     const textColorHex = document.getElementById('textColorHex');
+    
+    const hideAlphabet = document.getElementById('hideAlphabet');
+    const searchBox = document.getElementById('searchBox');
 
-    let loadedFontFamilies = [];
+    // 取得した全フォントデータを保存する配列
+    let allFontsData = []; 
 
+    // イベントリスナーの登録
     previewText.addEventListener('input', updatePreviews);
     fontSize.addEventListener('input', (e) => {
         fontSizeDisplay.textContent = e.target.value + 'px';
         updatePreviews();
     });
+    hideAlphabet.addEventListener('change', renderFontCards);
+    searchBox.addEventListener('input', renderFontCards);
 
-    // 選択された色をプレビュー枠に適用する処理
+    // カラー連動処理
     function applyColors() {
         document.documentElement.style.setProperty('--preview-bg', bgColorHex.value);
         document.documentElement.style.setProperty('--preview-text', textColorHex.value);
     }
 
-    // 背景色のイベント
-    bgColorPicker.addEventListener('input', (e) => {
-        bgColorHex.value = e.target.value;
-        applyColors();
-    });
-    bgColorHex.addEventListener('input', (e) => {
-        if (e.target.value.match(/^#[0-9a-fA-F]{6}$/)) {
-            bgColorPicker.value = e.target.value;
-            applyColors();
-        }
-    });
+    bgColorPicker.addEventListener('input', (e) => { bgColorHex.value = e.target.value; applyColors(); });
+    bgColorHex.addEventListener('input', (e) => { if (e.target.value.match(/^#[0-9a-fA-F]{6}$/)) { bgColorPicker.value = e.target.value; applyColors(); } });
 
-    // 文字色のイベント
-    textColorPicker.addEventListener('input', (e) => {
-        textColorHex.value = e.target.value;
-        applyColors();
-    });
-    textColorHex.addEventListener('input', (e) => {
-        if (e.target.value.match(/^#[0-9a-fA-F]{6}$/)) {
-            textColorPicker.value = e.target.value;
-            applyColors();
-        }
-    });
+    textColorPicker.addEventListener('input', (e) => { textColorHex.value = e.target.value; applyColors(); });
+    textColorHex.addEventListener('input', (e) => { if (e.target.value.match(/^#[0-9a-fA-F]{6}$/)) { textColorPicker.value = e.target.value; applyColors(); } });
 
-    // PC内フォントの読み込み処理
+    // フォント読み込み処理
     loadFontsBtn.addEventListener('click', async () => {
         if (!('queryLocalFonts' in window)) {
             statusMessage.style.color = "red";
@@ -219,17 +231,15 @@
             statusMessage.textContent = 'フォントへのアクセス許可をリクエスト中...';
             
             const fonts = await window.queryLocalFonts();
-            const uniqueFamilies = new Set();
-            loadedFontFamilies = [];
             
+            // ファミリー名で重複を排除しつつ、詳細データも保持する
+            const uniqueFamilies = new Map();
             for (const font of fonts) {
                 if (!uniqueFamilies.has(font.family)) {
-                    uniqueFamilies.add(font.family);
-                    loadedFontFamilies.push(font.family);
+                    uniqueFamilies.set(font.family, font);
                 }
             }
-
-            statusMessage.textContent = `${loadedFontFamilies.length} 種類のフォントを読み込みました！`;
+            allFontsData = Array.from(uniqueFamilies.values());
             renderFontCards();
 
         } catch (err) {
@@ -239,23 +249,59 @@
         }
     });
 
-    // フォントカードの生成
+    // 日本語フォントかどうかを判定する関数（ひらがな/漢字の有無、または有名フォントのキーワード）
+    function isJapaneseFont(fontName) {
+        // 日本語の文字コードが含まれているかチェック
+        if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]/.test(fontName)) return true;
+        
+        // ローマ字表記の日本語フォントによくあるキーワード群
+        const keywords = ['gothic', 'mincho', 'meiryo', 'yu ', 'hiragino', 'osaka', 'kozuka', 'noto sans jp', 'biz', 'ud', 'm+', 'tsukushi', 'maru', 'pop', 'kyokasho', 'hg', 'ms '];
+        const lowerName = fontName.toLowerCase();
+        for (let kw of keywords) {
+            if (lowerName.includes(kw)) return true;
+        }
+        return false;
+    }
+
+    // フォントカードの生成とフィルタリング
     function renderFontCards() {
         fontGrid.innerHTML = '';
         const currentText = previewText.value || 'プレビューテキスト';
         const currentSize = fontSize.value + 'px';
+        const isHideAlphabet = hideAlphabet.checked;
+        const query = searchBox.value.toLowerCase();
 
-        loadedFontFamilies.forEach(family => {
+        // フィルター処理
+        const filteredFonts = allFontsData.filter(font => {
+            const familyLower = font.family.toLowerCase();
+            const fullLower = font.fullName.toLowerCase();
+            
+            // 検索バーの絞り込み
+            if (query && !familyLower.includes(query) && !fullLower.includes(query)) return false;
+            
+            // 日本語フォントのみ絞り込み
+            if (isHideAlphabet) {
+                if (!isJapaneseFont(font.family) && !isJapaneseFont(font.fullName)) return false;
+            }
+            return true;
+        });
+
+        // 画面上部のメッセージを更新
+        statusMessage.textContent = `全 ${allFontsData.length} 種類中、${filteredFonts.length} 種類のフォントを表示しています！`;
+
+        // 描画
+        filteredFonts.forEach(font => {
             const card = document.createElement('div');
             card.className = 'font-card';
 
             const nameLabel = document.createElement('div');
             nameLabel.className = 'font-name';
-            nameLabel.textContent = family;
+            // ファミリー名とフルネームを併記
+            nameLabel.innerHTML = `<strong>${font.family}</strong><span>${font.fullName}</span>`;
 
             const previewDiv = document.createElement('div');
             previewDiv.className = 'font-preview';
-            previewDiv.style.fontFamily = `"${family}"`;
+            previewDiv.style.fontFamily = `"${font.family}"`;
             previewDiv.style.fontSize = currentSize;
             previewDiv.textContent = currentText;
 
